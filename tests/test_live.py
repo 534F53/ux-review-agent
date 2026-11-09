@@ -1,6 +1,7 @@
 """Opt-in real-model validation. Expected facts never enter model requests."""
 
 import asyncio
+import csv
 import json
 import os
 import threading
@@ -40,11 +41,19 @@ class LiveDemoValidation(unittest.IsolatedAsyncioTestCase):
                         if variant == "clear":
                             self.assertEqual(trace["result"]["status"], "completed")
                         if trace["result"]["status"] == "completed":
+                            self.assertGreaterEqual(trace["metrics"]["document_navigations"], case["min_document_navigations"])
+                            self.assertGreaterEqual(trace["metrics"]["total_browser_steps"], case["min_browser_actions"])
                             answer = (trace["result"]["answer"] or "").lower()
                             for term in case.get("expected_answer_terms", []):
                                 self.assertIn(term, answer)
                             if case.get("expected_download"):
                                 self.assertEqual(trace["verification"]["status"], "confirmed")
+                                paths = list((trace_path.parent / "downloads").glob("*.csv"))
+                                self.assertEqual(len(paths), 1)
+                                with paths[0].open(newline="") as stream:
+                                    rows = list(csv.DictReader(stream))
+                                self.assertEqual(len(rows), case["expected_download_rows"])
+                                self.assertTrue(all(row["status"] == "Active" for row in rows))
                         self.assertNotEqual(trace["evaluation"]["status"], "unavailable")
                         self.assertTrue(manifest["tasks"][0].get("artifacts"))
         finally:

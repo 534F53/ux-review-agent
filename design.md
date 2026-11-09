@@ -253,11 +253,13 @@ Ship three small apps, each with clear/confusing variants and equivalent core da
 
 | App | Tasks and UX probes |
 | --- | --- |
-| Lab Monitor | Read health/temperatures, inspect warnings; units, salience, small crowded targets |
-| Report Center | Filter/export CSV; ambiguous menus, format discovery, weak download feedback |
-| Device Setup | Create a device and recover from invalid input; field guidance, late errors, input loss |
+| Lab Monitor | Laboratory → searchable/paginated device list → warning/calibration detail; units, salience, small targets |
+| Report Center | Catalogue → filtered records → export configuration/download; ambiguous labels, scope preservation, weak feedback |
+| Device Setup | Inventory → registration/validation → persisted record; field guidance, late errors, input loss |
 
-They are browseable without a model and reused by tests. Use ordinary DOM controls, deterministic synthetic client data, reset instructions, English UI, and no external assets/build. The gallery may explain variants; evaluated app pages carry no issue/answer annotations. Ship examples/knowledge with placeholder connection settings. Private expected facts and special fault states remain outside served assets and all model contexts. Reports must reflect actual runs, not scripted demo findings.
+Each representative task must require two meaningful document navigations and multiple interactions from its entry URL. Initial loading and in-page filters do not count as document navigations. Browser tests verify both variants' complete paths, actual downloads, recovery, and saved records after refresh; the real-model matrix checks completed tasks against private minimum navigation/action counts. Trace metrics record action-associated document navigations separately from browser steps.
+
+The apps are browseable without a model and reused by tests. Use ordinary DOM controls, deterministic synthetic client data, reset instructions, English UI, and no external assets/build. The gallery links a bundled setup guide covering installation, two-terminal execution, model connection, manual walkthroughs, and reset/troubleshooting. The gallery/guide may explain variants; evaluated app pages carry no issue/answer annotations. Human walkthroughs are not model inputs. Ship examples/knowledge with placeholder connection settings. Private checks and special fault states remain outside served assets and all model contexts. Reports must reflect actual runs, not scripted demo findings.
 
 Tests cover schema/config/rubric/knowledge validation, evidence associations, malformed actions, geometry/padding/obstruction/staleness, auth capture suspension, limits/partial loads, session continuation, transport aliases/keys/retries, download checks, context batches, cancellation persistence, deduplication, and HTML escaping/local links. Include private offscreen/paginated/loading/freshness and unsupported-target cases as validation expands. Package checks verify installed demo/rubric/example assets outside the source checkout.
 

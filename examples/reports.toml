@@ -13,7 +13,7 @@ request_timeout_seconds = 90
 
 [[tasks]]
 id = "active-csv"
-description = "Show active records and export the filtered report as CSV."
+description = "Export only the active records from the North thermal survey report as CSV. Confirm the report scope and number of exported rows."
 [tasks.expected_download]
 extension = ".csv"
 filename_pattern = "lab-report.csv"

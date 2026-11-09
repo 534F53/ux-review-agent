@@ -1,5 +1,88 @@
 [
-  {"app":"lab","task_id":"inspect-warning","task":"Find the hottest device in Lab North and inspect the cause of its warning. Give its temperature with the unit.","expected_answer_terms":["device-07","92","fan"],"probes":["ambiguous units","small target","warning salience"],"confusing_may_be_uncertain":true},
-  {"app":"reports","task_id":"export-active","task":"Show active records and export the filtered report as CSV.","expected_download":{"extension":".csv","filename_pattern":"lab-report.csv"},"probes":["ambiguous Process label","buried format choice","weak visible feedback"],"confusing_may_be_uncertain":true},
-  {"app":"device","task_id":"create-device","task":"Create a test device named review-device-01 in Lab North, with serial TEST-0001 and a temperature warning threshold of 80 degrees Celsius. Confirm the visible result.","expected_answer_terms":["review-device-01"],"allowed_effects":["inspect","navigate","filter","create"],"probes":["unexplained fields","late requirements","input loss on validation errors"],"confusing_may_be_uncertain":true}
+  {
+    "app": "lab",
+    "task_id": "inspect-warning",
+    "task": "Assess Lab North's health. Identify its hottest device, give the temperature with its unit, and inspect the warning cause and recommended action.",
+    "expected_answer_terms": [
+      "device-07",
+      "92",
+      "fan",
+      "clean"
+    ],
+    "probes": [
+      "ambiguous units",
+      "small target",
+      "warning salience"
+    ],
+    "confusing_may_be_uncertain": true,
+    "min_document_navigations": 2,
+    "min_browser_actions": 3
+  },
+  {
+    "app": "reports",
+    "task_id": "export-active",
+    "expected_download_rows": 3,
+    "task": "Export only the active records from the North thermal survey report as CSV. Confirm the report scope and number of exported rows.",
+    "expected_download": {
+      "extension": ".csv",
+      "filename_pattern": "lab-report.csv"
+    },
+    "probes": [
+      "ambiguous Active filter",
+      "vague Process controls",
+      "weak download feedback",
+      "filter scope across navigation"
+    ],
+    "confusing_may_be_uncertain": true,
+    "min_document_navigations": 2,
+    "min_browser_actions": 4
+  },
+  {
+    "app": "device",
+    "task_id": "create-device",
+    "task": "Create a test device named review-device-01 in Lab North, with serial TEST-0001 and a temperature warning threshold of 80 degrees Celsius. Verify the saved record shows the requested name, serial, and threshold.",
+    "expected_answer_terms": [
+      "review-device-01",
+      "test-0001",
+      "80"
+    ],
+    "allowed_effects": [
+      "inspect",
+      "navigate",
+      "filter",
+      "create"
+    ],
+    "probes": [
+      "unexplained fields",
+      "late requirements",
+      "input loss on validation errors"
+    ],
+    "confusing_may_be_uncertain": true,
+    "min_document_navigations": 2,
+    "min_browser_actions": 8
+  },
+  {
+    "app": "device",
+    "task_id": "validation-recovery",
+    "task": "Attempt to create review-device-02 in Lab North with serial INVALID and a temperature threshold of 80 degrees Celsius. Recover from the validation error using serial TEST-0002, complete creation, and verify the saved record's name, serial, and threshold.",
+    "expected_answer_terms": [
+      "review-device-02",
+      "test-0002",
+      "80"
+    ],
+    "allowed_effects": [
+      "inspect",
+      "navigate",
+      "filter",
+      "create"
+    ],
+    "probes": [
+      "unexplained fields",
+      "late requirements",
+      "input loss on validation errors"
+    ],
+    "confusing_may_be_uncertain": true,
+    "min_document_navigations": 2,
+    "min_browser_actions": 10
+  }
 ]

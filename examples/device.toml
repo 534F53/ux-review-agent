@@ -17,8 +17,8 @@ request_timeout_seconds = 90
 
 [[tasks]]
 id = "create-device"
-description = "Create a test device named review-device-01 in Lab North, with serial TEST-0001 and a temperature warning threshold of 80 degrees Celsius. Confirm the visible result."
+description = "Create a test device named review-device-01 in Lab North, with serial TEST-0001 and a temperature warning threshold of 80 degrees Celsius. Verify the saved record shows the requested name, serial, and threshold."
 
 [[tasks]]
 id = "validation-recovery"
-description = "Attempt to create review-device-02 in Lab North with serial INVALID and a temperature threshold of 80 degrees Celsius. Recover from the validation error using serial TEST-0002, complete creation, and confirm the visible result."
+description = "Attempt to create review-device-02 in Lab North with serial INVALID and a temperature threshold of 80 degrees Celsius. Recover from the validation error using serial TEST-0002, complete creation, and verify the saved record's name, serial, and threshold."

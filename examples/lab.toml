@@ -17,8 +17,8 @@ request_timeout_seconds = 90
 
 [[tasks]]
 id = "lab-health"
-description = "Is Lab North healthy? Identify any device that needs attention, including the temperature and unit."
+description = "Assess Lab North's health. Identify its hottest device, give the temperature with its unit, and inspect the warning cause and recommended action."
 
 [[tasks]]
-id = "warning-detail"
-description = "Find the hottest device in Lab North and inspect the cause of its warning. Give the temperature with its unit."
+id = "calibration-check"
+description = "Check Device-03 in Lab North. Report its current health, temperature with its unit, and next calibration date."

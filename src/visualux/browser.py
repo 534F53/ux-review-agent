@@ -78,6 +78,9 @@ class Browser:
     def _navigated(self, frame):
         if frame == self.page.main_frame:
             self.generation += 1
+            if self.trace and not self.human and self.pending:
+                step_id = self.trace.data["steps"][-1]["id"] if self.trace.data["steps"] else None
+                self.trace.event("document_navigation", step_id=step_id)
 
     def _popup(self, page):
         if page != self.page and not self.human:

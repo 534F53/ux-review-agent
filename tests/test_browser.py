@@ -1,6 +1,7 @@
 """Real Chromium fixture checks; these do not claim real-model quality."""
 
 import asyncio
+import json
 import tempfile
 import threading
 import unittest
@@ -38,58 +39,175 @@ class BrowserTests(unittest.IsolatedAsyncioTestCase):
         self.server.server_close()
         self.temp.cleanup()
 
-    async def test_six_demo_variants_function(self):
+    async def test_six_demo_variants_have_complete_workflows(self):
+        navigations = []
+        self.page.on("framenavigated", lambda frame: navigations.append(frame.url) if frame == self.page.main_frame else None)
         for variant in ("clear", "confusing"):
             with self.subTest(variant=variant):
                 await self.page.goto(f"{self.url}/lab.html?variant={variant}")
-                self.assertEqual(await self.page.locator("tbody tr").count(), 8)
-                await self.page.locator('[data-device="6"]').click()
+                baseline = len(navigations)
+                self.assertEqual(await self.page.locator("[data-lab]").count(), 3)
+                self.assertNotIn("Device-07", await self.page.locator("#content").inner_text())
+                await self.page.locator('[data-lab="north"]').click()
+                await self.page.wait_for_url("**/lab-devices.html?*")
+                self.assertEqual(await self.page.locator("tbody tr").count(), 4)
+                self.assertIn("Page 1 of 2", await self.page.locator("#device-scope").inner_text())
+                self.assertEqual(await self.page.locator('[data-device="device-07"]').count(), 0)
+                await self.page.locator("#next").click()
+                self.assertIn("Page 2 of 2", await self.page.locator("#device-scope").inner_text())
+                await self.page.locator("#warnings").click()
+                self.assertEqual(await self.page.locator("tbody tr").count(), 1)
+                await self.page.locator('[data-device="device-07"]').click()
+                await self.page.wait_for_url("**/lab-device.html?*")
+                self.assertEqual(len(navigations) - baseline, 2)
+                self.assertIn("92 °C", await self.page.locator("#content").inner_text())
                 self.assertIn("Cooling fan blocked", await self.page.locator("#detail").inner_text())
+                self.assertIn("clean the fan", await self.page.locator("#detail").inner_text())
+                await self.page.locator('.breadcrumbs a').nth(1).click()
+                await self.page.locator("#device-search").fill("Device-03")
+                self.assertEqual(await self.page.locator("tbody tr").count(), 1)
+                await self.page.locator('[data-device="device-03"]').click()
+                self.assertIn("2026-12-15", await self.page.locator("#detail").inner_text())
+                self.assertIn("Healthy", await self.page.locator(".stats").inner_text())
+
                 await self.page.goto(f"{self.url}/reports.html?variant={variant}")
+                baseline = len(navigations)
+                self.assertEqual(await self.page.locator("tbody tr").count(), 3)
+                self.assertEqual(await self.page.locator("#export").count(), 0)
+                await self.page.locator('[data-report="north-thermal"]').click()
+                await self.page.wait_for_url("**/report-detail.html?*")
+                self.assertEqual(await self.page.locator("tbody tr").count(), 4)
                 await self.page.locator("#active").click()
                 self.assertEqual(await self.page.locator("tbody tr").count(), 3)
                 await self.page.locator("#export").click()
+                await self.page.wait_for_url("**/report-export.html?*")
+                self.assertEqual(len(navigations) - baseline, 2)
+                self.assertIn("Active records only", await self.page.locator("#export-scope").inner_text())
+                self.assertIn("3 rows", await self.page.locator("#export-scope").inner_text())
                 async with self.page.expect_download() as info:
                     await self.page.locator("#csv").click()
                 download = await info.value
                 self.assertEqual(download.suggested_filename, "lab-report.csv")
                 text = (await download.path()).read_text()
+                self.assertEqual(len(text.splitlines()), 4)
+                self.assertTrue(text.startswith("report,status,date,count\n"))
                 self.assertNotIn("Archived", text)
+                await self.page.locator('.breadcrumbs a').nth(1).click()
+                self.assertEqual(await self.page.locator("#active").get_attribute("aria-pressed"), "true")
+                self.assertEqual(await self.page.locator("tbody tr").count(), 3)
+
                 await self.page.goto(f"{self.url}/device.html?variant={variant}")
-                await self.page.locator("#name").fill("review-device-01")
+                baseline = len(navigations)
+                self.assertEqual(await self.page.locator("#created tr").count(), 2)
+                self.assertEqual(await self.page.locator("#device-form").count(), 0)
+                await self.page.locator("#new-device").click()
+                await self.page.wait_for_url("**/device-new.html?*")
+                for field, value in {"name": "review-device-01", "serial": "INVALID", "threshold": "80"}.items():
+                    await self.page.locator(f"#{field}").fill(value)
                 await self.page.locator("button[type=submit]").click()
-                retained = await self.page.locator("#name").input_value()
-                self.assertEqual(retained, "" if variant == "confusing" else "review-device-01")
+                self.assertEqual(len(navigations) - baseline, 1)
+                self.assertIn("Serial number must", await self.page.locator("form").inner_text())
+                self.assertEqual(await self.page.locator("#name").input_value(), "" if variant == "confusing" else "review-device-01")
                 for field, value in {"name": "review-device-01", "serial": "TEST-0001", "threshold": "80"}.items():
                     await self.page.locator(f"#{field}").fill(value)
                 await self.page.locator("button[type=submit]").click()
+                await self.page.wait_for_url("**/device-detail.html?*")
+                self.assertEqual(len(navigations) - baseline, 2)
+                for value in ("review-device-01", "TEST-0001", "80 °C", "Lab North"):
+                    self.assertIn(value, await self.page.locator("#saved-device").inner_text())
+                await self.page.reload()
+                self.assertIn("review-device-01", await self.page.locator("#saved-device").inner_text())
+                await self.page.locator('.breadcrumbs a').click()
+                self.assertEqual(await self.page.locator("#created tr").count(), 3)
                 self.assertIn("review-device-01", await self.page.locator("#created").inner_text())
                 await self.page.locator("#reset").click()
-                self.assertEqual(await self.page.locator("#created").inner_text(), "No devices created yet.")
+                await self.page.wait_for_url("**/device.html?*")
+                self.assertEqual(await self.page.locator("#created tr").count(), 2)
+                self.assertNotIn("review-device-01", await self.page.locator("#created").inner_text())
+
+    async def test_demo_export_options_and_device_storage_errors(self):
+        await self.page.goto(f"{self.url}/report-export.html?report=north-thermal&status=active")
+        await self.page.locator('[value="json"]').check()
+        async with self.page.expect_download() as info:
+            await self.page.locator("#csv").click()
+        download = await info.value
+        self.assertEqual(download.suggested_filename, "lab-report.json")
+        rows = json.loads((await download.path()).read_text())
+        self.assertEqual(len(rows), 3)
+        self.assertTrue(all(row["status"] == "Active" for row in rows))
+        await self.page.locator('[value="csv"]').check()
+        await self.page.locator("#headers").uncheck()
+        async with self.page.expect_download() as info:
+            await self.page.locator("#csv").click()
+        self.assertEqual(len((await (await info.value).path()).read_text().splitlines()), 3)
+
+        await self.page.goto(f"{self.url}/device-new.html")
+        for serial, threshold, message in (("TEST-1001", "80", "already registered"), ("TEST-0099", "121", "whole number from 1 to 120")):
+            for field, value in {"name": "New sensor", "serial": serial, "threshold": threshold}.items():
+                await self.page.locator(f"#{field}").fill(value)
+            await self.page.locator("button[type=submit]").click()
+            errors = await self.page.locator("form").inner_text()
+            self.assertIn(message, errors)
+        await self.page.locator("#threshold").fill("80")
+        await self.page.evaluate("() => { Storage.prototype.setItem = () => { throw new Error('quota'); }; }")
+        await self.page.locator("button[type=submit]").click()
+        self.assertIn("could not be saved", await self.page.locator("#form-error").inner_text())
+        self.assertEqual(await self.page.locator("#name").input_value(), "New sensor")
+        await self.page.reload()
+        await self.page.evaluate("localStorage.setItem('visualux-devices', '{broken')")
+        await self.page.reload()
+        self.assertIn("Demo storage unavailable", await self.page.locator("#content").inner_text())
+        self.assertEqual(await self.page.evaluate("localStorage.getItem('visualux-devices')"), "{broken")
+        await self.page.locator("#reset").click()
+        self.assertEqual(await self.page.locator("#created tr").count(), 2)
+        await self.page.evaluate("localStorage.setItem('visualux-devices', JSON.stringify([{name:'<img src=x>',serial:'TEST-0099',threshold:'80'}]))")
+        await self.page.goto(f"{self.url}/device-detail.html?device=created-1")
+        self.assertIn("<img src=x>", await self.page.locator("#saved-device").inner_text())
+        self.assertEqual(await self.page.locator("#content img").count(), 0)
+        await self.page.goto(f"{self.url}/lab-device.html?lab=invalid&device=device-07")
+        self.assertIn("Record unavailable", await self.page.locator("#content").inner_text())
 
     async def controlled_browser(self):
         await self.page.close()
-        cfg = Config(url=self.url + "/lab.html", model=ModelConfig(name="test/model"), tasks=[TaskSpec(id="lab", description="Inspect")], limits={"settle_ms": 0})
+        cfg = Config(url=self.url + "/lab-devices.html?lab=north", model=ModelConfig(name="test/model"), tasks=[TaskSpec(id="lab", description="Inspect")], limits={"settle_ms": 0})
         budget = Budget(cfg.limits)
         browser = Browser(self.context, cfg, budget)
         await browser.start()
         trace = TaskTrace(self.root, cfg.tasks[0], cfg, resolve(CriteriaConfig()))
         browser.trace = trace
         await browser.navigate(cfg.url)
+        await browser.page.locator("#warnings").click()
         observation, png = await browser.observe(trace)
         return browser, trace, observation
 
     async def test_geometry_and_stale_node_not_retargeted(self):
         browser, trace, observation = await self.controlled_browser()
-        selected = [c for c in browser.candidates if await c[1].get_attribute("data-device") == "6"][0]
+        selected = [c for c in browser.candidates if await c[1].get_attribute("data-device") == "device-07"][0]
         binding = {"id": "test", "observation_id": observation["id"]}
         measure, point = await browser.measure(selected, binding, trace)
         self.assertGreaterEqual(measure["bounds_css_px"]["width"], 40)
         self.assertIsNotNone(point)
         await selected[1].evaluate("el=>el.replaceWith(el.cloneNode(true))")
-        action = Click(kind="click", target=Target(observation_id=observation["id"], description="Warning detail button in the seventh row"), effect="inspect", expected="Detail opens")
+        action = Click(kind="click", target=Target(observation_id=observation["id"], description="Warning detail link in the filtered row"), effect="inspect", expected="Detail opens")
         with self.assertRaises(BrowserBlocked):
             await browser.dispatch(action, selected, point)
+
+    async def test_navigation_metric_ignores_initial_load_hash_and_human(self):
+        browser, trace, observation = await self.controlled_browser()
+        navigations = lambda: [event for event in trace.data["events"] if event["kind"] == "document_navigation"]
+        self.assertEqual(len(navigations()), 1)
+        self.assertIsNone(navigations()[0]["step_id"])
+        trace.data["steps"].append({"id": "step-000"})
+        await browser.page.evaluate("location.hash = 'devices'")
+        await browser.page.wait_for_url("**#devices")
+        self.assertEqual(len(navigations()), 1)
+        await browser.page.locator('[data-device="device-07"]').click()
+        await browser.page.wait_for_url("**/lab-device.html?*")
+        self.assertEqual(len(navigations()), 2)
+        self.assertEqual(navigations()[-1]["step_id"], "step-000")
+        browser.human = True
+        await browser.page.reload()
+        self.assertEqual(len(navigations()), 2)
 
     async def test_capture_suspended_and_password_typing_rejected(self):
         browser, trace, observation = await self.controlled_browser()
@@ -110,6 +228,9 @@ class BrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status, 404)
         response = await self.page.request.get(self.url + "/")
         self.assertEqual(response.status, 200)
+        response = await self.page.request.get(self.url + "/guide.html")
+        self.assertEqual(response.status, 200)
+        self.assertIn("examples/device.local.toml", await response.text())
 
     async def test_known_auth_origin_pauses_before_capture(self):
         browser, trace, observation = await self.controlled_browser()

@@ -58,7 +58,12 @@ class Endpoint(BaseHTTPRequestHandler):
             pixel = zlib.decompress(packed)[1:4]
             value = {"background": {b"\xff\x00\x00": "red", b"\x00\xff\x00": "green", b"\x00\x00\xff": "blue"}[pixel]}
         elif "candidate_refs" in payload:
-            wanted = "c004" if "export control" in payload["target_description"] else "c005"
+            wanted = {
+                "The North thermal survey report link in the first catalogue row": "c004",
+                "The Active only filter button above the records": "c007",
+                "The Configure export control at the top right": "c005",
+                "The Download file button below the format choices": "c009",
+            }[payload["target_description"]]
             value = {"matches": [wanted] if wanted in payload["candidate_refs"] else []}
         elif "current_observation_id" in payload:
             oid, tid = payload["current_observation_id"], payload["task_id"]
@@ -66,13 +71,19 @@ class Endpoint(BaseHTTPRequestHandler):
             type(self).actions[tid] = count + 1
             if self.invalid:
                 action = {"kind": "execute_js", "code": "document.cookie"}
-            elif tid == "export" and count < 2:
-                action = {"kind": "click", "effect": "download", "expected": "Show format choices" if count == 0 else "Start the CSV download",
-                          "target": {"observation_id": oid, "description": "The export control in the top right" if count == 0 else "The CSV option in the open top-right menu"}}
+            elif tid == "export" and count < 4:
+                description, effect, expected = [
+                    ("The North thermal survey report link in the first catalogue row", "navigate", "Open the report"),
+                    ("The Active only filter button above the records", "filter", "Show only active records"),
+                    ("The Configure export control at the top right", "navigate", "Open export configuration"),
+                    ("The Download file button below the format choices", "download", "Start the CSV download"),
+                ][count]
+                action = {"kind": "click", "effect": effect, "expected": expected,
+                          "target": {"observation_id": oid, "description": description}}
             elif tid == "blocked":
                 action = {"kind": "click", "effect": "delete", "expected": "Delete a record", "target": {"observation_id": oid, "description": "A hypothetical destructive control"}}
             else:
-                action = {"kind": "finish", "status": "completed", "reason": "visual_answer_available", "answer": "Four report records are visible." if tid != "export" else "The UI reports that the CSV download started.", "evidence": [{"observation_id": oid}], "scope": "Visible report table", "limitations": ["Scripted contract-test endpoint; not a real-model assessment."]}
+                action = {"kind": "finish", "status": "completed", "reason": "visual_answer_available", "answer": "Three reports are available." if tid != "export" else "The UI reports that the CSV download started for three active records.", "evidence": [{"observation_id": oid}], "scope": "Visible report interface", "limitations": ["Scripted contract-test endpoint; not a real-model assessment."]}
             value = {"observation_id": oid, "visible_summary": "The report interface is visible.", "rationale": "Inspect the visible interface", "memory": "Report page observed.", "action": action}
         else:
             value = {"findings": [], "dispositions": [], "covered_observations": [o["id"] for o in payload.get("observations", [])], "covered_criteria": list(payload.get("rubric", {})), "limitations": ["Scripted contract test, not real-model evaluation."]}
@@ -113,20 +124,24 @@ class Integration(unittest.IsolatedAsyncioTestCase):
         return root, json.loads((root / "manifest.json").read_text())
 
     async def test_operation_information_transport_and_reports(self):
-        cfg = self.config([TaskSpec(id="export", description="Export the report as CSV", expected_download={"extension": ".csv"}), TaskSpec(id="read", description="How many reports are visible?")])
+        cfg = self.config([TaskSpec(id="export", description="Export only active records from North thermal survey as CSV", expected_download={"extension": ".csv"}), TaskSpec(id="read", description="How many reports are available?")])
         code = await run(cfg, resolve(CriteriaConfig()), "Sentinel knowledge reference: not a UI fact.")
         self.assertEqual(code, 0)
         root, manifest = self.artifacts()
         self.assertEqual([t["status"] for t in manifest["tasks"]], ["completed", "completed"])
         export = json.loads((root / "tasks/export/trace.json").read_text())
         read = json.loads((root / "tasks/read/trace.json").read_text())
-        self.assertEqual(export["metrics"]["actions"], {"click": 2})
+        self.assertEqual(export["metrics"]["actions"], {"click": 4})
+        self.assertEqual(export["metrics"]["document_navigations"], 2)
         self.assertEqual(export["verification"]["status"], "confirmed")
         self.assertEqual(read["metrics"]["total_browser_steps"], 0)
+        self.assertEqual(read["metrics"]["document_navigations"], 0)
         self.assertEqual(len(manifest["preflight"]), 1)
         self.assertTrue((root / "index.html").is_file())
         self.assertTrue((root / "tasks/export/report.html").is_file())
-        self.assertTrue(list((root / "tasks/export/downloads").glob("*.csv")))
+        csv = next((root / "tasks/export/downloads").glob("*.csv")).read_text()
+        self.assertEqual(len(csv.splitlines()), 4)
+        self.assertNotIn("Archived", csv)
         calls = []
         for _, request, authorization in Endpoint.requests:
             self.assertEqual(request["model"], "contract/vision")

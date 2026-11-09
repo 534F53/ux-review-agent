@@ -1,6 +1,8 @@
-# VisualUX Agent
+# UX Review Agent
 
-A local CLI for evaluating web usability through screenshot-driven tasks. Supply a URL and tasks; receive answers, chronological evidence, supported UX findings, and English HTML/Markdown reports with JSON traces.
+UX Review Agent that assesses web app usability/UX by trying to use an app as a user would: looking at the screen, pursuing a goal, and working through the interface. Its task decisions are grounded in screenshots, rather than DOM text or structure, so the review centers on what a user can see and understand.
+
+Run it locally as a CLI: supply a URL and tasks; receive answers, chronological evidence, supported UX findings, and English HTML/Markdown reports with JSON traces.
 
 **Status: initial MVP implementation.** The CLI, three bundled mock apps, task execution, human authentication handoff, evaluation, and static reports are implemented. Automated Chromium and scripted gateway tests cover engineering contracts. **Real-model usability accuracy and the LiteLLM + Gemma 4 31B deployment have not been validated.** The first live trial and actual SSO/manual-login smoke test remain pending.
 
@@ -25,19 +27,19 @@ If you use uv, `uv sync --locked` creates the environment from the checked-in lo
 visualux demo
 ```
 
-Open the printed URL, normally `http://127.0.0.1:8765`. Use `--port` for another loopback port. Stop with Ctrl+C. Browsing the apps requires no model or credentials.
+Open the printed URL, normally `http://127.0.0.1:8765`. The gallery links to a **Setup guide & walkthroughs** at `/guide.html`, covering installation, two-terminal setup, model configuration, task commands, reset behavior, and manual verification. Use `--port` for another loopback port. Stop with Ctrl+C. Browsing the apps requires no model or credentials.
 
-| App | Task | Deliberately confusing variant |
+| App | Workflow (two document navigations) | Deliberately confusing variant |
 | --- | --- | --- |
-| Lab Monitor | Find the hottest device and inspect its warning | Ambiguous units/status codes, tiny detail buttons, weak grouping |
-| Report Center | Filter active records and export CSV | Vague Process menu, buried format choice, weak download feedback |
-| Device Setup | Create a device and recover from invalid input | Unexplained fields, late requirements, lost input after validation errors |
+| Lab Monitor | Laboratories → paginated/searchable devices → warning or calibration details | Ambiguous units/status codes, tiny detail links, weak warning salience |
+| Report Center | Report catalogue → filtered records → export configuration and CSV download | Abbreviated filter, vague Process controls, weak download feedback |
+| Device Setup | Inventory → registration form and validation recovery → saved record | Unexplained fields, late requirements, lost input after validation errors |
 
-Each app has clear and confusing variants with equivalent data and core operations. Task URLs open the app without issue annotations or good/bad labels. All data is synthetic. **Reset demo data** clears records created in that browser context. The same assets are reused in browser tests; private expected facts are outside the served directory.
+Each representative task requires multiple interactions across three screens. Examples start at the app entry page, without issue annotations or good/bad labels. Both variants have equivalent data and core operations. All data is synthetic. Created devices survive navigation and refresh; **Reset demo data** clears them and returns to the app entry. Variants share storage within a browser context, so reset between manual comparisons. The same assets are reused in browser tests; private checks are outside the served directory.
 
 ## Configure your model and run
 
-Copy or edit [examples/lab.toml](examples/lab.toml), [examples/reports.toml](examples/reports.toml), or [examples/device.toml](examples/device.toml). Installed wheels also include copies under the environment's `share/visualux/examples` directory. Replace the gateway alias and endpoint with your deployment's actual values. Supply its inference key through the named environment variable.
+Copy [examples/lab.toml](examples/lab.toml), [examples/reports.toml](examples/reports.toml), or [examples/device.toml](examples/device.toml) to a neighboring `*.local.toml` file (ignored by Git). Keeping it in the same directory preserves relative knowledge/output paths. Installed wheels also include copies under the environment's `share/visualux/examples` directory; copy that directory to a writable workspace first. Replace the gateway alias and endpoint with your deployment's actual values. Supply its inference key through the named environment variable.
 
 An existing LiteLLM gateway uses:
 
@@ -53,7 +55,9 @@ response_mode = "prompted"
 The `litellm_proxy/` prefix selects LiteLLM's client route; the remaining alias, including slashes, is forwarded unchanged. No second gateway, admin key, upstream provider credentials, or server reconfiguration is needed. Direct providers and local OpenAI-compatible servers can use their LiteLLM provider/model identifier and explicit endpoint instead.
 
 ```bash
-visualux run --config examples/lab.toml
+cp examples/lab.toml examples/lab.local.toml
+# Edit examples/lab.local.toml and export LITELLM_PROXY_API_KEY first.
+visualux run --config examples/lab.local.toml
 ```
 
 To compare demo variants, change `variant=clear` to `variant=confusing` in the URL and run again with the same task/configuration. Each run gets its own artifact directory. There is no automatic product-wide ranking.
@@ -184,7 +188,7 @@ Run deterministic tests (includes real headless Chromium against the local demos
 python -m unittest discover -s tests -v
 ```
 
-These cover the six demo variants, action/schema validation, evidence references, permissions, session continuation, target geometry/staleness, handoff capture suspension, escaping, transport, downloads, context limits, and evaluation/deduplication. The scripted endpoint checks orchestration, **not real-model visual or UX quality**.
+These walk all six demo variants across two document navigations, check filtering, CSV contents, validation recovery, and saved records after refresh, and cover action/schema validation, evidence references, permissions, session continuation, target geometry/staleness, handoff capture suspension, escaping, transport, context limits, and evaluation/deduplication. The scripted endpoint checks orchestration, **not real-model visual or UX quality**.
 
 To opt into the real-model matrix, point `VISUALUX_LIVE_CONFIG` to a configured TOML file with your endpoint/alias and run `python -m unittest discover -s tests -p test_live.py -v`. This makes real model requests and retains run artifacts. Private expected facts stay in `tests/cases/`; the harness never gives them to the planner, matcher or evaluator. Review findings and missed issues manually as well as inspecting deterministic answer checks.
 

@@ -270,6 +270,7 @@ async def run(config, rubric, knowledge):
                         "browser_dispatch_seconds": sum(s.get("dispatch_seconds") or 0 for s in trace.data["steps"]),
                         "browser_settling_seconds": sum(event["seconds"] for event in trace.data["events"] if event["kind"] == "render_wait"),
                         "navigation_wait_seconds": sum(event["seconds"] for event in trace.data["events"] if event["kind"] == "navigation_wait"),
+                        "document_navigations": sum(event["kind"] == "document_navigation" and event.get("step_id") is not None for event in trace.data["events"]),
                         "model_seconds_by_phase": {phase: sum(c["seconds"] for c in trace.data["model_calls"] if c["phase"] == phase) for phase in {c["phase"] for c in trace.data["model_calls"]}},
                         "requests": budget.requests,
                     }

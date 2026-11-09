@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VisualUX — Demo setup guide</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="gallery guide">
+<main>
+  <p><a href="index.html">← Demo gallery</a></p>
+  <div class="eyebrow">VISUALUX / HUMAN SETUP GUIDE</div>
+  <h1>Run a complete workflow.</h1>
+  <p class="intro">Three local apps with clear and confusing designs. Each example starts at an app entry page and needs two document navigations, multiple interactions, and a visible result.</p>
+
+  <h2>1. Install and start the playground</h2>
+  <p>From the repository root, use Python 3.11 or newer. Skip environment creation if you already have <code>.venv</code>.</p>
+  <pre><code>python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+playwright install chromium
+visualux demo</code></pre>
+  <p>Alternatively, <code>uv sync --locked</code> installs from the lockfile; run <code>.venv/bin/playwright install chromium</code> and <code>.venv/bin/visualux demo</code>. No frontend build, database, account, or inference service is needed to browse.</p>
+  <p>Keep this terminal running. Open <code>http://127.0.0.1:8765</code>: the gallery should show three apps and two links per app. Clicking a link starts the corresponding workflow. The server binds only to loopback and makes no model calls on startup.</p>
+
+  <h2>2. Configure your model</h2>
+  <p>If you installed a wheel without a source checkout, skip the installation commands above. Activate that environment, start from an empty writable directory, and copy the bundled configurations first: <code>cp -R "$VIRTUAL_ENV/share/visualux/examples" ./examples</code>. The demo startup output also prints their installed location.</p>
+  <p>For agent runs, open a second terminal at the repository root. Copy the examples next to their originals so relative knowledge/output paths keep working. Local configuration copies are ignored by Git.</p>
+  <pre><code>source .venv/bin/activate
+cp examples/lab.toml examples/lab.local.toml
+cp examples/reports.toml examples/reports.local.toml
+cp examples/device.toml examples/device.local.toml
+export LITELLM_PROXY_API_KEY='YOUR_INFERENCE_KEY'</code></pre>
+  <p>Edit each local file's <code>[model]</code> connection. For an existing LiteLLM gateway:</p>
+  <pre><code>[model]
+name = "litellm_proxy/YOUR_EXISTING_ALIAS"
+api_base = "http://127.0.0.1:4000"
+api_key_env = "LITELLM_PROXY_API_KEY"
+response_mode = "prompted"
+# context_tokens = 32768  # replace with the deployment's actual usable limit</code></pre>
+  <p>The model must accept image inputs and follow the action schema. The alias after <code>litellm_proxy/</code> is sent unchanged to your gateway. Use an inference key, supplied through the named environment variable. Never put credentials in task descriptions or knowledge files. The examples allow longer time budgets for local inference; these are allowances, not measured latency guarantees.</p>
+  <p>The planned LiteLLM + Gemma 4 31B trial remains unverified. A preflight checks basic image input before a run; it does not establish UI-reading quality.</p>
+
+  <h2>3. Run the tasks</h2>
+  <pre><code>visualux run --config examples/lab.local.toml
+visualux run --config examples/reports.local.toml
+visualux run --config examples/device.local.toml</code></pre>
+  <p>The lab configuration includes warning investigation and a separate calibration lookup. Device Setup includes successful creation and an explicit invalid-serial recovery task; it grants <code>create</code> permission for this synthetic data. The optional <code>examples/knowledge.md</code> supplies field concepts and test values, without a correct click path.</p>
+  <p>Keep entry URLs at <code>lab.html</code>, <code>reports.html</code>, or <code>device.html</code>. Start with <code>?variant=clear</code>; change only that query value to <code>confusing</code> to compare designs using the same tasks, model, and budgets. Each run has its own directory under <code>reports/</code> with an HTML index, task reports, screenshots, trace, and any downloaded file.</p>
+  <p>Give the agent a goal, as the example tasks do. These human walkthroughs are not loaded into model requests; keep them out of knowledge/configuration inputs. Confusing designs may produce blocked or uncertain outcomes. Those outcomes and their evidence should remain visible in the report.</p>
+
+  <h2>4. Check the workflow manually</h2>
+  <p>These checks describe successful paths for humans. App entry pages do not show the answers needed to complete the tasks. Both designs support the same paths and data.</p>
+  <details>
+    <summary>Lab Monitor — choose a lab → explore devices → inspect a device</summary>
+    <ol>
+      <li>Open either Lab Monitor variant from the gallery, then choose Lab North. This is navigation one.</li>
+      <li>The list shows four of eight devices. Use the warning filter or pagination to find the exception. Search also supports the separate Device-03 calibration task.</li>
+      <li>Open the device detail. This is navigation two. Read the temperature with its unit, warning cause, recommended action, and calibration date.</li>
+    </ol>
+    <p>The confusing variant uses abbreviated status/temperature labels, a low-salience warning, and a tiny detail target.</p>
+  </details>
+  <details>
+    <summary>Report Center — choose a report → filter records → configure and download</summary>
+    <ol>
+      <li>Choose North thermal survey from the three-report catalogue. This is navigation one.</li>
+      <li>Select active records. Confirm the visible subset, then open export configuration. This is navigation two.</li>
+      <li>Check that the active scope and row count survived navigation. Download CSV and inspect the actual file, not just the UI feedback. The breadcrumb back to the report preserves the selected scope.</li>
+    </ol>
+    <p>The confusing variant uses “A”, vague “Process” controls, and weak completion feedback. Format choices include CSV and JSON; the representative task requests CSV.</p>
+  </details>
+  <details>
+    <summary>Device Setup — inventory → registration form → saved record</summary>
+    <ol>
+      <li>Start with the inventory's two existing devices. Open the registration form. This is navigation one.</li>
+      <li>Enter the requested name, serial, and temperature threshold. For the recovery task, submit the invalid serial first, then correct it. The confusing design clears entered values after a validation error.</li>
+      <li>Submit valid data. Successful saving opens a separate device record: navigation two. Verify all requested values there.</li>
+      <li>Refresh the saved record and return to inventory. The record should still exist. Reset demo data and confirm only the original two devices remain.</li>
+    </ol>
+  </details>
+  <p>Browser tests walk all six app/variant combinations and check two real document navigations per workflow, filtering, recovery, file contents, and persisted state. The optional real-model matrix checks completed tasks against private minimum navigation/action counts and expected results. Initial page loading does not count as a task navigation; tab changes and filters do not count as document navigations.</p>
+
+  <h2>State and reset</h2>
+  <p>All data is synthetic and stored in the browser. Created devices persist across navigation and refresh in the same context. Clear and confusing variants share storage when opened in the same browser profile and origin: use “Reset demo data” before a manual comparison. It explicitly clears created devices and returns to the current app's entry page. Independent agent tasks use fresh contexts by default. No backend cleanup is needed.</p>
+
+  <h2>Troubleshooting</h2>
+  <ul>
+    <li><strong>Port already in use:</strong> run <code>visualux demo --port 8766</code> and update each configuration's entry URL to the same port. Use the same hostname consistently; browser storage is origin-specific.</li>
+    <li><strong>Chromium missing or cannot start:</strong> run <code>playwright install chromium</code> in the environment and follow Playwright's error guidance for required Linux system libraries.</li>
+    <li><strong>Authentication/model errors:</strong> check the named key environment variable, endpoint, and exact deployed alias. The tool does not silently switch providers or response modes.</li>
+    <li><strong>Invalid model response or timeout:</strong> confirm image and structured instruction support; use <code>prompted</code> unless your gateway supports JSON/schema mode. Review retained artifacts before adjusting request/task budgets.</li>
+    <li><strong>Missing saved record:</strong> check whether you changed browser context, hostname, or port, or reset data. Storage write failures show an error and retain the form values. Corrupt stored data requires an explicit reset.</li>
+  </ul>
+  <p>The apps use ordinary same-tab DOM controls. Canvas clicks, uploads, drag/drop, and multi-tab workflows are outside the agent's current support.</p>
+  <footer>LOCAL BY DESIGN · Synthetic data only.</footer>
+</main>
+</body>
+</html>
