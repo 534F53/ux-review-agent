@@ -1,0 +1,24 @@
+url = "http://127.0.0.1:8765/device.html?variant=clear"
+output = "../reports"
+knowledge_file = "./knowledge.md"
+
+[model]
+name = "litellm_proxy/REPLACE_WITH_YOUR_GATEWAY_ALIAS"
+api_base = "http://127.0.0.1:4000"
+api_key_env = "LITELLM_PROXY_API_KEY"
+
+[permissions]
+allowed_effects = ["inspect", "navigate", "filter", "create"]
+
+[limits]
+active_seconds = 600
+evaluation_seconds = 300
+request_timeout_seconds = 90
+
+[[tasks]]
+id = "create-device"
+description = "Create a test device named review-device-01 in Lab North, with serial TEST-0001 and a temperature warning threshold of 80 degrees Celsius. Confirm the visible result."
+
+[[tasks]]
+id = "validation-recovery"
+description = "Attempt to create review-device-02 in Lab North with serial INVALID and a temperature threshold of 80 degrees Celsius. Recover from the validation error using serial TEST-0002, complete creation, and confirm the visible result."

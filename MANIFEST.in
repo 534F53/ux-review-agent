@@ -1,0 +1,3 @@
+include design.md uv.lock
+recursive-include examples *.toml *.md
+recursive-include tests *.py *.json

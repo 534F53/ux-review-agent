@@ -1,0 +1,24 @@
+url = "http://127.0.0.1:8765/lab.html?variant=clear"
+output = "../reports"
+session_mode = "isolated"
+
+[model]
+name = "litellm_proxy/REPLACE_WITH_YOUR_GATEWAY_ALIAS"
+api_base = "http://127.0.0.1:4000"
+api_key_env = "LITELLM_PROXY_API_KEY"
+response_mode = "prompted"
+# Set this to your deployment's actual usable context limit when known.
+# context_tokens = 32768
+
+[limits]
+active_seconds = 600
+evaluation_seconds = 300
+request_timeout_seconds = 90
+
+[[tasks]]
+id = "lab-health"
+description = "Is Lab North healthy? Identify any device that needs attention, including the temperature and unit."
+
+[[tasks]]
+id = "warning-detail"
+description = "Find the hottest device in Lab North and inspect the cause of its warning. Give the temperature with its unit."

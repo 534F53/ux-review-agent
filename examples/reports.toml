@@ -1,0 +1,19 @@
+url = "http://127.0.0.1:8765/reports.html?variant=clear"
+output = "../reports"
+
+[model]
+name = "litellm_proxy/REPLACE_WITH_YOUR_GATEWAY_ALIAS"
+api_base = "http://127.0.0.1:4000"
+api_key_env = "LITELLM_PROXY_API_KEY"
+
+[limits]
+active_seconds = 600
+evaluation_seconds = 300
+request_timeout_seconds = 90
+
+[[tasks]]
+id = "active-csv"
+description = "Show active records and export the filtered report as CSV."
+[tasks.expected_download]
+extension = ".csv"
+filename_pattern = "lab-report.csv"

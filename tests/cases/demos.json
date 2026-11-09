@@ -1,0 +1,5 @@
+[
+  {"app":"lab","task_id":"inspect-warning","task":"Find the hottest device in Lab North and inspect the cause of its warning. Give its temperature with the unit.","expected_answer_terms":["device-07","92","fan"],"probes":["ambiguous units","small target","warning salience"],"confusing_may_be_uncertain":true},
+  {"app":"reports","task_id":"export-active","task":"Show active records and export the filtered report as CSV.","expected_download":{"extension":".csv","filename_pattern":"lab-report.csv"},"probes":["ambiguous Process label","buried format choice","weak visible feedback"],"confusing_may_be_uncertain":true},
+  {"app":"device","task_id":"create-device","task":"Create a test device named review-device-01 in Lab North, with serial TEST-0001 and a temperature warning threshold of 80 degrees Celsius. Confirm the visible result.","expected_answer_terms":["review-device-01"],"allowed_effects":["inspect","navigate","filter","create"],"probes":["unexplained fields","late requirements","input loss on validation errors"],"confusing_may_be_uncertain":true}
+]
